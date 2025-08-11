@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="live.title">Live Stream - RUC Portal</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/live.css">
+    <link rel="icon" type="image/png" href="img/logo.png">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <a href="index.html" class="logo-link">
+                        <img src="img/logo.png" alt="RUC Logo" class="logo">
+                        <div class="logo-text">
+                            <h1><span class="full-name" data-i18n="nav.title">Razzakov University College</span></h1>
+                            <p><span class="subtitle" data-i18n="nav.subtitle">Yanhekt Student Portal</span></p>
+                        </div>
+                    </a>
+                </div>
+                <div class="nav-right">
+                    <div class="language-switcher">
+                        <a href="#" class="lang-btn" data-lang="en">EN</a>
+                        <a href="#" class="lang-btn" data-lang="zh">中文</a>
+                    </div>
+                </div>
+                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Stream Info Section -->
+        <section class="stream-info-section">
+            <div class="container">
+                <div class="stream-info-card" id="streamInfoCard">
+                    <!-- Stream info will be populated here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Video Player Section -->
+        <section class="video-section">
+            <div class="container">
+                <div class="video-controls">
+                    <div class="stream-selector">
+                        <button class="btn btn-primary active" id="cameraStreamBtn" data-i18n="live.camera_stream">Camera Stream</button>
+                        <button class="btn btn-secondary" id="screenStreamBtn" data-i18n="live.screen_stream">Screen Stream</button>
+                    </div>
+                    <div class="video-actions">
+                        <button class="btn btn-outline" id="copyUrlBtn" data-i18n="live.copy_url">Copy Stream URL</button>
+                    </div>
+                </div>
+                
+                <div class="video-container">
+                    <video id="videoPlayer" controls crossorigin="anonymous">
+                        <p data-i18n="live.video_not_supported">Your browser does not support the video tag.</p>
+                    </video>
+                    <div class="video-overlay" id="videoOverlay">
+                        <div class="video-status" id="videoStatus" data-i18n="live.loading">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide Extraction Section -->
+        <section class="slide-extraction-section" id="slideExtractionSection" style="display: none;">
+            <div class="container">
+                <div class="slide-extraction-card">
+                    <div class="extraction-header">
+                        <div class="header-top">
+                            <h3 data-i18n="slide.title">Slide Extraction</h3>
+                            <button class="settings-link" id="slideSettingsBtn" data-i18n="slide.settings">Settings</button>
+                            <div class="settings-popup" id="slideSettingsPopup">
+                                <div class="setting-item">
+                                    <label for="checkInterval" data-i18n="slide.check_interval">Check Interval (ms):</label>
+                                    <input type="number" id="checkInterval" value="2000" min="1000" max="10000" step="500">
+                                </div>
+                                <div class="setting-item">
+                                    <label>
+                                        <input type="checkbox" id="enableDoubleVerification" checked>
+                                        <span data-i18n="slide.double_verification">Enable Double Verification</span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <label for="verificationCount" data-i18n="slide.verification_count">Verification Count:</label>
+                                    <input type="number" id="verificationCount" value="2" min="1" max="5">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="extraction-controls">
+                            <label class="switch">
+                                <input type="checkbox" id="enableSlideExtraction">
+                                <span class="slider round"></span>
+                            </label>
+                            <span data-i18n="slide.enable">Enable Auto Extraction</span>
+                        </div>
+                    </div>
+                    
+                    <div class="extraction-settings">
+                    </div>
+                    
+                    <div class="extraction-status">
+                        <div class="status-indicator" id="extractionStatus">
+                            <span class="status-text" id="extractionStatusText" data-i18n="slide.status_stopped">Stopped</span>
+                        </div>
+                        <div class="slides-counter">
+                            <span data-i18n="slide.slides_captured">Slides captured:</span> 
+                            <span id="slidesCount">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="extraction-actions">
+                        <button class="btn btn-primary" id="downloadSlidesBtn" data-i18n="slide.download">Download Slides</button>
+                        <button class="btn btn-secondary" id="clearSlidesBtn" data-i18n="slide.clear">Clear Slides</button>
+                    </div>
+                    
+                    <div class="slides-preview" id="slidesPreview">
+                        <!-- Captured slides will be shown here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stream URL Display -->
+        <section class="stream-url-section">
+            <div class="container">
+                <div class="url-display-card">
+                    <h3 data-i18n="live.stream_urls">Stream URLs</h3>
+                    <div class="url-item">
+                        <label data-i18n="live.camera_url">Camera Stream URL:</label>
+                        <div class="url-input-group">
+                            <input type="text" id="cameraUrl" readonly>
+                            <button class="btn btn-outline" onclick="copyToClipboard('cameraUrl')" data-i18n="live.copy">Copy</button>
+                        </div>
+                    </div>
+                    <div class="url-item">
+                        <label data-i18n="live.screen_url">Screen Stream URL:</label>
+                        <div class="url-input-group">
+                            <input type="text" id="screenUrl" readonly>
+                            <button class="btn btn-outline" onclick="copyToClipboard('screenUrl')" data-i18n="live.copy">Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="#" id="termsLink" data-i18n="footer.terms">Terms and Conditions</a>
+                    <a href="https://yanhekt.cn" target="_blank" data-i18n="footer.yanhekt">Visit Yanhekt</a>
+                    <a href="https://yanhe.bitech.edu.kg/" target="_blank" data-i18n="footer.old_version">Old Version</a>
+                    <a href="https://github.com/bit-admin/Yanhekt-AutoSlides" target="_blank" data-i18n="footer.github">GitHub</a>
+                </div>
+                <div class="footer-copyright">
+                    <p data-i18n="footer.copyright">© 2025 Razzakov University College. | Yanhekt™ is a trademark of its rights holder. | We respect the copyright and other intellectual property rights of third parties.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Terms Modal -->
+    <div class="modal" id="termsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="terms.title">Terms and Conditions</h2>
+                <button class="modal-close" id="closeTermsModal">&times;</button>
+            </div>
+            <div class="modal-body" id="termsContent">
+                <!-- Terms content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/token.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/device-optimizer.js"></script>
+    <script src="js/slide-storage-manager.js"></script>
+    <script src="js/slide-extractor.js"></script>
+    <script src="js/live.js"></script>
+</body>
+</html>
