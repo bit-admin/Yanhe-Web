@@ -1,0 +1,646 @@
+/* Live Page Specific Styles */
+
+/* Stream Info Section */
+.stream-info-section {
+    padding: 2rem 0;
+    background: white;
+    border-bottom: 1px solid #ddd;
+}
+
+.stream-info-card {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border-left: 4px solid #8B0000;
+}
+
+.stream-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #8B0000;
+    margin-bottom: 0.5rem;
+}
+
+.stream-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.meta-icon {
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    color: #8B0000;
+}
+
+.meta-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Video Section */
+.video-section {
+    padding: 2rem 0;
+    background: #f8f9fa;
+}
+
+.video-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+}
+
+.stream-selector {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.stream-selector .btn {
+    min-width: 150px;
+}
+
+.video-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.video-container {
+    position: relative;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+#videoPlayer {
+    width: 100%;
+    height: auto;
+    min-height: 400px;
+    display: block;
+}
+
+.video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.3s;
+}
+
+.video-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.video-status {
+    color: white;
+    font-size: 1.2rem;
+    text-align: center;
+}
+
+/* Slide Extraction Section */
+.slide-extraction-section {
+    padding: 2rem 0;
+    background: white;
+}
+
+.slide-extraction-card {
+    background: #f8f9fa;
+    padding: 2rem;
+    border-radius: 12px;
+    border: 2px solid #8B0000;
+}
+
+.extraction-header {
+    margin-bottom: 1.5rem;
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.extraction-header h3 {
+    color: #8B0000;
+    margin: 0;
+}
+
+.settings-link {
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 0.9rem;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s ease;
+}
+
+.settings-link:hover {
+    color: #8B0000;
+}
+
+.extraction-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Toggle Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked + .slider {
+    background-color: #8B0000;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+/* Extraction Settings */
+.extraction-settings {
+    margin-bottom: 1.5rem;
+}
+
+.settings-popup {
+    position: absolute;
+    top: calc(100% + 5px);
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    min-width: 300px;
+    display: none;
+}
+
+.settings-popup.show {
+    display: block;
+}
+
+.setting-item {
+    margin-bottom: 1rem;
+}
+
+.setting-item:last-child {
+    margin-bottom: 0;
+}
+
+.setting-item label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #333;
+}
+
+.setting-item input[type="number"] {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.setting-item input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+/* Extraction Status */
+.extraction-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-indicator::before {
+    content: '';
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #6c757d;
+}
+
+.status-indicator.running::before {
+    background: #28a745;
+    animation: pulse 1.5s infinite;
+}
+
+.status-indicator.error::before {
+    background: #dc3545;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+.slides-counter {
+    font-weight: bold;
+    color: #8B0000;
+}
+
+/* Extraction Actions */
+.extraction-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Slides Preview */
+.slides-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    scroll-behavior: smooth;
+}
+
+.slide-thumbnail {
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    transition: transform 0.2s;
+}
+
+.slide-thumbnail:hover {
+    transform: scale(1.05);
+}
+
+.slide-thumbnail img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.slide-index {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+/* Stream URL Section */
+.stream-url-section {
+    padding: 2rem 0;
+    background: #f8f9fa;
+}
+
+.url-display-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.url-display-card h3 {
+    color: #8B0000;
+    margin-bottom: 1.5rem;
+}
+
+.url-item {
+    margin-bottom: 1.5rem;
+}
+
+.url-item:last-child {
+    margin-bottom: 0;
+}
+
+.url-item label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #333;
+}
+
+.url-input-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.url-input-group input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #f8f9fa;
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
+.url-input-group button {
+    flex-shrink: 0;
+}
+
+/* Error Messages */
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #f5c6cb;
+    margin-bottom: 1rem;
+}
+
+.error-message-fixed {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    max-width: 600px;
+    width: auto;
+    margin-bottom: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 768px) {
+    .error-message-fixed {
+        max-width: calc(100% - 2rem);
+        left: 1rem;
+        right: 1rem;
+        transform: none;
+    }
+}
+
+.success-message {
+    background: #d4edda;
+    color: #155724;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #c3e6cb;
+    margin-bottom: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    /* Stream Info Section - More compact on mobile */
+    .stream-info-section {
+        padding: 1rem 0;
+    }
+    
+    .stream-info-card {
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stream-title {
+        font-size: 1.2rem;
+        margin-bottom: 0.3rem;
+    }
+    
+    .stream-meta {
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        grid-template-columns: 1fr;
+    }
+    
+    .meta-item {
+        gap: 0.3rem;
+        font-size: 0.85rem;
+    }
+    
+    .video-controls {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .stream-selector,
+    .video-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .stream-selector .btn {
+        flex: 1;
+        min-width: auto;
+        padding: 0.6rem 1rem;
+        font-size: 0.95rem;
+    }
+    
+    .video-actions {
+        flex-wrap: wrap;
+    }
+    
+    .video-actions .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    /* Hide copy URL button on mobile */
+    #copyUrlBtn {
+        display: none;
+    }
+    
+    /* Hide video actions container when empty on mobile */
+    .video-actions:empty,
+    .video-actions:has(#copyUrlBtn:only-child) {
+        display: none;
+    }
+    
+    .extraction-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .extraction-status {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .extraction-actions {
+        flex-direction: column;
+    }
+    
+    .stream-meta {
+        grid-template-columns: 1fr;
+    }
+    
+    .url-input-group {
+        flex-direction: column;
+    }
+    
+    .settings-popup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 400px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Even more compact stream info for very small screens */
+    .stream-info-section {
+        padding: 0.5rem 0;
+    }
+    
+    .stream-info-card {
+        padding: 0.75rem;
+        border-radius: 8px;
+    }
+    
+    .stream-title {
+        font-size: 1.1rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .meta-item {
+        font-size: 0.8rem;
+    }
+    
+    .slide-extraction-card,
+    .url-display-card {
+        padding: 1.5rem;
+    }
+    
+    .slides-preview {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+    
+    .video-container {
+        border-radius: 8px;
+    }
+    
+    #videoPlayer {
+        min-height: 250px;
+    }
+    
+    /* Even smaller buttons for very small screens */
+    .btn {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.85rem;
+    }
+    
+    .extraction-actions .btn {
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Loading Animation */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 0.5rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Copy Button Animation */
+.btn.copied {
+    background: #28a745 !important;
+    color: white !important;
+    transition: all 0.3s;
+}
+
+.btn.copied::after {
+    content: ' ✓';
+}
+
+/* Dark mode support for video player */
+@media (prefers-color-scheme: dark) {
+    .video-container {
+        box-shadow: 0 4px 12px rgba(255,255,255,0.1);
+    }
+}

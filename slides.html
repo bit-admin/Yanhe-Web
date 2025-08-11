@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="slides.title">Slide Manager - RUC Portal</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/slides.css">
+    <link rel="icon" type="image/png" href="img/logo.png">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <a href="index.html" class="logo-link">
+                        <img src="img/logo.png" alt="RUC Logo" class="logo">
+                        <div class="logo-text">
+                            <h1><span class="full-name" data-i18n="nav.title">Razzakov University College</span></h1>
+                            <p><span class="subtitle" data-i18n="nav.subtitle">Yanhekt Student Portal</span></p>
+                        </div>
+                    </a>
+                </div>
+                <div class="nav-right">
+                    <div class="language-switcher">
+                        <a href="#" class="lang-btn" data-lang="en">EN</a>
+                        <a href="#" class="lang-btn" data-lang="zh">中文</a>
+                    </div>
+                </div>
+                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <!-- 页面标题 -->
+        <section class="page-header">
+            <div class="container">
+                <h1 data-i18n="slides.page_title">Slide Manager</h1>
+                <p data-i18n="slides.page_description">Manage and view slides extracted from live courses</p>
+            </div>
+        </section>
+
+        <!-- 存储统计 -->
+        <section class="storage-stats-section">
+            <div class="container">
+                <div class="stats-card">
+                    <h2 data-i18n="slides.storage_stats">Storage Statistics</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number" id="totalStreams">0</span>
+                            <span class="stat-label" data-i18n="slides.total_streams">Courses</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="totalSlides">0</span>
+                            <span class="stat-label" data-i18n="slides.total_slides">Total Slides</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="totalSize">0 MB</span>
+                            <span class="stat-label" data-i18n="slides.total_size">Storage Used</span>
+                        </div>
+                    </div>
+                    <div class="storage-actions">
+                        <button class="btn btn-secondary" id="refreshStatsBtn" data-i18n="slides.refresh">Refresh Stats</button>
+                        <button class="btn btn-danger" id="clearAllBtn" data-i18n="slides.clear_all">Clear All Data</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 直播课程列表 -->
+        <section class="streams-section">
+            <div class="container">
+                <div class="section-header">
+                    <h2 data-i18n="slides.stream_list">Courses with Saved Slides</h2>
+                    <div class="sort-controls">
+                        <select id="sortBy">
+                            <option value="lastAccessed" data-i18n="slides.sort.recent">Recently Accessed</option>
+                            <option value="schedule_started_at" data-i18n="slides.sort.date">Class Time</option>
+                            <option value="slideCount" data-i18n="slides.sort.slides">Slide Count</option>
+                            <option value="title" data-i18n="slides.sort.title">Course Name</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="streams-grid" id="streamsGrid">
+                    <!-- 课程卡片将在这里动态生成 -->
+                </div>
+                
+                <div class="no-data-message" id="noDataMessage" style="display: none;">
+                    <div class="no-data-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h3 data-i18n="slides.no_data.title">No Data</h3>
+                    <p data-i18n="slides.no_data.desc">No slides have been saved yet</p>
+                    <a href="index.html" class="btn btn-primary" data-i18n="slides.no_data.goto_home">Go to Live Streams</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 幻灯片详情模态框 -->
+        <div class="modal" id="slideDetailModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalStreamTitle" data-i18n="common.course_slides">Course Slides</h3>
+                    <button class="close-btn" id="closeModalBtn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="slides-gallery" id="slidesGallery">
+                        <!-- 幻灯片缩略图网格 -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="downloadAllBtn" data-i18n="slides.download_all">Download All</button>
+                    <button class="btn btn-danger" id="deleteStreamBtn" data-i18n="slides.delete_stream">Delete This Course Data</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 幻灯片全屏查看模态框 -->
+        <div class="modal" id="fullscreenModal">
+            <div class="modal-content fullscreen">
+                <div class="fullscreen-top-controls">
+                    <button class="btn btn-primary" id="downloadSlideBtn" data-i18n="slides.download">Download</button>
+                    <button class="btn btn-secondary" id="closeFullscreenBtn" data-i18n="slides.close">Close</button>
+                </div>
+                <img id="fullscreenImage" src="" alt="Slide" data-i18n-alt="common.slide_alt">
+                <div class="fullscreen-controls">
+                    <button class="btn btn-outline" id="prevSlideBtn" data-i18n="slides.prev">Previous</button>
+                    <span id="slidePosition">1 / 10</span>
+                    <button class="btn btn-outline" id="nextSlideBtn" data-i18n="slides.next">Next</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="#" id="termsLink" data-i18n="footer.terms">Terms and Conditions</a>
+                    <a href="https://yanhekt.cn" target="_blank" data-i18n="footer.yanhekt">Visit Yanhekt</a>
+                    <a href="https://yanhe.bitech.edu.kg/" target="_blank" data-i18n="footer.old_version">Old Version</a>
+                    <a href="https://github.com/bit-admin/Yanhekt-AutoSlides" target="_blank" data-i18n="footer.github">GitHub</a>
+                </div>
+                <div class="footer-copyright">
+                    <p data-i18n="footer.copyright">© 2025 Razzakov University College. | Yanhekt™ is a trademark of its rights holder. | We respect the copyright and other intellectual property rights of third parties.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Loading indicator -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p id="loadingMessage" data-i18n="common.loading">Loading...</p>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/device-optimizer.js"></script>
+    <script src="js/slide-storage-manager.js"></script>
+    <script src="js/slides.js"></script>
+    
+    <script>
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.i18n) {
+                await window.i18n.init();
+            }
+            
+            window.slidesApp = new SlidesManagementApp();
+            await window.slidesApp.init();
+        });
+        
+        // 移动端菜单切换
+        function toggleMobileMenu() {
+            const navbar = document.querySelector('.navbar');
+            navbar.classList.toggle('mobile-menu-open');
+        }
+    </script>
+</body>
+</html>
