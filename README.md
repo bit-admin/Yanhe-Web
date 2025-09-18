@@ -2,9 +2,41 @@
 
 本仓库用于存储 [RUC Student Portal](https://learn.ruc.edu.kg) 的前端代码。
 
-RUC Student Portal 提供比延河课堂官方网站更简单直接直播课程服务。用户可观看全校任意直播课程，同时在上课时同步从屏幕录制中提取课程课件。
+RUC Student Portal 提供比延河课堂官方网站更简单直接的直播课程服务。用户可观看全校任意直播课程，同时在上课时同步从屏幕录制中提取课程课件。
 
 > RUC Student Portal is a third-party tool developed independently by its contributors. It is NOT an official website of, and is NOT affiliated with, associated with, endorsed by, or in any way connected to Renmin University of China (RUC) or Beijing Institute of Technology (BIT), or any of their subsidiaries or affiliates. All product and company names are trademarks™ or registered® trademarks of their respective holders.
+
+## 使用指南
+
+### 从延河课堂获取密钥
+
+我们非常重视您的账户安全。如果您完全信任本服务，可以直接通过 BIT 统一身份认证 (SSO) 登录。作为替代方案，如果您希望避免直接输入密码，可以先登录“延河课堂”官网，然后使用我们的书签工具提取访问密钥。在密钥有效期内，此操作只需执行一次。
+
+> **提示：**
+> - 在 iOS Safari 上，按住并拖动“获取延河课堂密钥”按钮，保持手指按住不放，用另一只手轻点屏幕底部的“书本”图标，在新打开的书签栏页面，将按钮拖放到你想要的位置；
+> - 在桌面浏览器上，按下 Ctrl/Cmd+Shift+B 显示书签栏。
+
+### 输入您的密钥
+
+将从延河课堂复制的密钥粘贴到下面的输入框中。我们绝不会在服务器上储存您的账户、密码或任何个人身份信息。
+
+### 观看直播课程
+
+要查看您本学期注册的课程，请查看个人直播列表；要查看当前时段全校的直播课程，请切换到全校直播列表。您还可以输入关键词搜索想要观看的课程。
+
+### 启用幻灯片自动提取
+
+选择观看屏幕录制时，可启用幻灯片自动提取功能。在移动设备上启用此功能时，需保持浏览器标签页为活跃状态并置于前台。
+
+> **提示：** 在 iOS Safari 上，切换应用、锁定屏幕可能导致幻灯片提取中止，您可以进入全屏或画中画播放模式并关闭自动锁屏。
+
+### 管理您的已储存幻灯片
+
+幻灯片会保存在您浏览器的本地数据库中，点击“查看已储存幻灯片”可进行管理。
+
+> **提示：**
+> - 若在直播页面下载失败，您可返回此处查看并下载所有已储存的幻灯片；
+> - 若本地数据库出现索引错误，可尝试通过“清理所有数据”功能进行修复。
 
 ## 目录结构
 
