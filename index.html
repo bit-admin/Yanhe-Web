@@ -75,7 +75,7 @@
                                           class="bookmark-tool-btn" 
                                           data-i18n="instructions.bookmark.button">Get Yanhekt Token</a>
                                 </div>
-                                <p class="note" data-i18n="instructions.bookmark.note">Note: This tool is more convenient to use on desktop browsers. On desktop browsers, press Ctrl/Cmd+Shift+B to show the bookmarks bar; on iOS Safari, tap the "book" icon at the bottom of the interface to enter the bookmarks bar, then long-press the button above and drag it here.</p>
+                                <p class="note" data-i18n="instructions.bookmark.note">Note: On desktop browsers, press Ctrl/Cmd+Shift+B to show the bookmarks bar; on iOS Safari, tap the "book" icon at the bottom of the interface to enter the bookmarks bar, then long-press the button above and drag it here.</p>
                             </div>
                         </div>
                     </div>
@@ -92,7 +92,7 @@
                         <div class="step-number">3</div>
                         <div class="step-content">
                             <h3 data-i18n="instructions.step3.title">Browse Live Streams</h3>
-                            <p data-i18n="instructions.step3.desc">To view the courses you have registered for this semester, please check your personal live stream list; to view all live stream courses currently available across the school, please switch to the public live stream list. Select the course you want to watch.</p>
+                            <p data-i18n="instructions.step3.desc">To view the courses you have registered for this semester, please check your personal live stream list; to view all live stream courses currently available across the school, please switch to the public live stream list. You can also enter keywords to search for courses that you want to watch.</p>
                         </div>
                     </div>
                     
@@ -108,7 +108,7 @@
                         <div class="step-number">5</div>
                         <div class="step-content">
                             <h3 data-i18n="instructions.step5.title">Manage Your Saved Slides</h3>
-                            <p data-i18n="instructions.step5.desc">Extracted slides will be saved locally in your browser. You can click "View Saved Slides" to view and manage your stored slides.</p>
+                            <p data-i18n="instructions.step5.desc">Extracted slides will be saved locally in your browser. You can click "View Saved Slides" to view and manage your stored slides; should an index error occur in the local database, you may attempt to rectify it by using the "Clear All Data" function.</p>
                         </div>
                     </div>
                     
@@ -163,14 +163,57 @@
                         </a>
                         <button class="btn btn-primary" id="getPersonalStreamsBtn" data-i18n="streams.personal">Personal Streams</button>
                         <button class="btn btn-secondary" id="getPublicStreamsBtn" data-i18n="streams.public">Public Streams</button>
+
+                        <!-- Search Input -->
+                        <div class="search-input-container">
+                            <div class="search-input-wrapper">
+                                <input type="text"
+                                       id="keywordSearchInput"
+                                       class="search-input"
+                                       placeholder="Enter keyword to search courses..."
+                                       data-i18n-placeholder="search.keyword_placeholder">
+                                <button type="button"
+                                        id="searchBtn"
+                                        class="search-button"
+                                        data-i18n-title="search.button">
+                                    <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                                        <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
+
+                <!-- Filter Bar (hidden by default, shown in debug mode) -->
+                <div class="filter-bar debug-only" id="filterBar" style="display: none;">
+                    <div class="filter-controls">
+                        <div class="filter-input-group">
+                            <div class="filter-enable">
+                                <input type="checkbox" id="enableFilterCheckbox">
+                                <label for="enableFilterCheckbox" data-i18n="filter.enable">Enable Filter</label>
+                            </div>
+                            <input type="text"
+                                   id="titleFilterInput"
+                                   placeholder="Enter course title to search..."
+                                   data-i18n-placeholder="filter.title_placeholder"
+                                   disabled>
+                            <select id="searchRangeSelect" disabled>
+                                <option value="16" data-i18n="filter.search_range.16">Search in first 16</option>
+                                <option value="32" data-i18n="filter.search_range.32">Search in first 32</option>
+                                <option value="64" data-i18n="filter.search_range.64">Search in first 64</option>
+                                <option value="128" data-i18n="filter.search_range.128">Search in first 128</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="loading-indicator" id="loadingIndicator" style="display: none;">
                     <div class="spinner"></div>
                     <span data-i18n="loading">Loading...</span>
                 </div>
-                
+
                 <div class="streams-grid" id="streamsGrid">
                     <!-- Stream cards will be populated here -->
                 </div>
@@ -184,6 +227,24 @@
                 <div class="no-streams-message" id="noStreamsMessage" style="display: none;">
                     <h3 data-i18n="streams.no_streams.title">No streams found</h3>
                     <p data-i18n="streams.no_streams.desc">Please check your token and try again.</p>
+                </div>
+
+                <!-- Debug Panel -->
+                <div class="debug-panel" id="debugPanel" style="display: none;">
+                    <div class="debug-panel-header">
+                        <h3 data-i18n="debug.title">Debug Mode</h3>
+                        <button class="btn btn-outline btn-sm" id="closeDebugPanel" data-i18n="debug.close">Close</button>
+                    </div>
+                    <div class="debug-panel-content">
+                        <div class="debug-section">
+                            <h4 data-i18n="debug.m3u8.title">M3U8 Stream URL</h4>
+                            <p data-i18n="debug.m3u8.desc">Enter a direct m3u8 stream URL for testing</p>
+                            <div class="input-group">
+                                <input type="url" id="debugM3u8Input" placeholder="https://example.com/stream.m3u8" data-i18n-placeholder="debug.m3u8.placeholder">
+                                <button class="btn btn-primary" id="debugM3u8Btn" data-i18n="debug.m3u8.button">Test M3U8</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

@@ -27,8 +27,17 @@ class SlidesManagementApp {
             this.setupEventListeners();
 
             // 加载数据
-            await this.loadStorageStats();
-            await this.loadStreams();
+            const loadingText = window.i18n ? window.i18n.get('slides.loading_initial') : 'Loading data...';
+            this.showLoading(true, loadingText);
+
+            try {
+                await Promise.all([
+                    this.loadStorageStats(),
+                    this.loadStreams()
+                ]);
+            } finally {
+                this.showLoading(false);
+            }
         } catch (error) {
             console.error('Failed to initialize SlidesManagementApp:', error);
             const errorMessage = window.i18n ? window.i18n.get('slides.init_failed') : 'Initialization failed, please refresh the page and try again';
@@ -41,7 +50,7 @@ class SlidesManagementApp {
      */
     setupEventListeners() {
         // 统计相关
-        document.getElementById('refreshStatsBtn').addEventListener('click', () => this.loadStorageStats());
+        document.getElementById('refreshStatsBtn').addEventListener('click', () => this.refreshAllData());
         document.getElementById('clearAllBtn').addEventListener('click', () => this.clearAllData());
 
         // 排序
@@ -83,23 +92,41 @@ class SlidesManagementApp {
     }
 
     /**
+     * 刷新所有数据（统计和课程列表）
+     */
+    async refreshAllData() {
+        try {
+            const refreshingText = window.i18n ? window.i18n.get('slides.refreshing_all') : 'Refreshing all data...';
+            this.showLoading(true, refreshingText);
+
+            // 同时刷新统计数据和课程列表
+            await Promise.all([
+                this.loadStorageStats(),
+                this.loadStreams()
+            ]);
+
+        } catch (error) {
+            console.error('Failed to refresh data:', error);
+            const errorMessage = window.i18n ? window.i18n.get('slides.refresh_failed') : 'Failed to refresh data';
+            this.showError(errorMessage);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    /**
      * 加载存储统计
      */
     async loadStorageStats() {
         try {
-            const loadingText = window.i18n ? window.i18n.get('slides.loading_stats') : 'Loading statistics...';
-            this.showLoading(true, loadingText);
             const stats = await this.storageManager.getStorageStats();
-            
+
             document.getElementById('totalStreams').textContent = stats.totalStreams;
             document.getElementById('totalSlides').textContent = stats.totalSlides;
             document.getElementById('totalSize').textContent = stats.formattedSize;
         } catch (error) {
             console.error('Failed to load storage stats:', error);
-            const errorMessage = window.i18n ? window.i18n.get('slides.load_failed') : 'Loading failed';
-            this.showError(errorMessage);
-        } finally {
-            this.showLoading(false);
+            throw error; // 重新抛出错误，让调用者处理
         }
     }
 
@@ -108,24 +135,18 @@ class SlidesManagementApp {
      */
     async loadStreams() {
         try {
-            const loadingText = window.i18n ? window.i18n.get('slides.loading_courses') : 'Loading course list...';
-            this.showLoading(true, loadingText);
-            
             console.log('Loading streams with slides...');
             this.currentStreams = await this.storageManager.getAllStreamsWithSlides();
             console.log('Loaded streams:', this.currentStreams.length, 'streams');
-            
+
             this.renderStreams();
         } catch (error) {
             console.error('Failed to load streams:', error);
-            const errorMessage = window.i18n ? window.i18n.get('slides.load_failed') : 'Loading failed';
-            this.showError(errorMessage + ': ' + error.message);
-            
+
             // 降级处理：显示空数据状态
             this.currentStreams = [];
             this.renderStreams();
-        } finally {
-            this.showLoading(false);
+            throw error; // 重新抛出错误，让调用者处理
         }
     }
 

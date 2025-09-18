@@ -43,7 +43,14 @@ class SlideExtractor {
         
         // 全屏处理相关
         this.fullscreenChangeHandler = null;
-        
+
+        // UI元素引用
+        this.extractionToggleElement = null;
+        this.toggleChangeHandler = null;
+
+        // 自动启动标志
+        this.shouldAutoStart = false;
+
         // 不在构造函数中调用 initializeUI，而是在 init 方法中调用
     }
     
@@ -162,17 +169,17 @@ class SlideExtractor {
                 
                 // 如果之前正在提取，询问是否继续
                 if (this.sessionState.isExtracting) {
-                    const message = window.i18n ? 
+                    const message = window.i18n ?
                         window.i18n.get('slide.session_restore_message', { count: this.sessionState.currentSlideCount }) :
                         `Detected that you were extracting slides while watching this live stream last time. Do you want to continue extraction?\n${this.sessionState.currentSlideCount} slides have been saved`;
-                    
+
                     const shouldContinue = confirm(message);
-                    
+
                     if (shouldContinue) {
                         // 恢复幻灯片预览
                         await this.restoreSlidesPreview();
-                        // 可以选择自动开始提取
-                        // this.startExtraction();
+                        // 自动开始提取（在UI初始化后）
+                        this.shouldAutoStart = true;
                     }
                 } else {
                     // 仅恢复幻灯片预览，不自动开始提取
@@ -414,8 +421,6 @@ class SlideExtractor {
         // 简单的消息显示，可以后续改进为更好的UI
         if (type === 'error') {
             console.error(message);
-        } else {
-            console.log(message);
         }
         
         // 也可以显示在状态区域
@@ -441,19 +446,28 @@ class SlideExtractor {
         
         // 启用/禁用开关
         const extractionToggle = document.getElementById('enableSlideExtraction');
-        
+
         if (extractionToggle) {
             // 移除可能存在的旧事件监听器
             const newToggle = extractionToggle.cloneNode(true);
             extractionToggle.parentNode.replaceChild(newToggle, extractionToggle);
-            
-            newToggle.addEventListener('change', (e) => {
+
+            // 同步按钮状态与实际运行状态
+            newToggle.checked = this.isRunning;
+
+            // 保存事件处理器引用以便后续管理
+            this.toggleChangeHandler = (e) => {
                 if (e.target.checked) {
                     this.startExtraction();
                 } else {
                     this.stopExtraction();
                 }
-            });
+            };
+
+            newToggle.addEventListener('change', this.toggleChangeHandler);
+
+            // 保存引用以便后续状态同步
+            this.extractionToggleElement = newToggle;
         }
         
         // 设置按钮点击事件
@@ -530,6 +544,18 @@ class SlideExtractor {
         
         // 标记UI已初始化
         this.isUIInitialized = true;
+
+        // 确保按钮状态正确（防止UI初始化时状态不同步）
+        this.syncToggleButtonState();
+
+        // 处理自动启动逻辑
+        if (this.shouldAutoStart) {
+            this.shouldAutoStart = false;
+            // 延迟启动以确保UI完全初始化
+            setTimeout(() => {
+                this.startExtraction();
+            }, 100);
+        }
     }
     
     /**
@@ -600,7 +626,13 @@ class SlideExtractor {
         if (this.isRunning) {
             const video = this.getVideoElement();
             if (video) {
-                clearInterval(this.captureInterval);
+                // 确保清理旧的定时器
+                if (this.captureInterval) {
+                    clearInterval(this.captureInterval);
+                    this.captureInterval = null;
+                }
+
+                // 创建新的定时器
                 this.captureInterval = setInterval(() => {
                     this.captureAndCompareWithFallback();
                 }, this.userConfig.checkInterval);
@@ -612,56 +644,130 @@ class SlideExtractor {
      * 开始提取幻灯片
      */
     startExtraction() {
-        if (this.isRunning) return;
-        
+        if (this.isRunning) {
+            // 如果已经在运行，确保按钮状态正确
+            this.syncToggleButtonState();
+            return;
+        }
+
         const video = this.getVideoElement();
         if (!video) {
             const errorMessage = window.i18n ? window.i18n.get('slide.error_no_player') : 'Video player not found, please start playing video first';
             this.showError(errorMessage);
-            const extractionToggle = document.getElementById('enableSlideExtraction');
-            if (extractionToggle) {
-                extractionToggle.checked = false;
-            }
+            // 重置按钮状态
+            this.syncToggleButtonState();
             return;
         }
-        
+
         this.isRunning = true;
         const runningText = window.i18n ? window.i18n.get('slide.running') : 'Running...';
         this.updateStatus(runningText, 'running');
-        
+
+        // 同步按钮状态
+        this.syncToggleButtonState();
+
         // 设置全屏状态监听
         this.setupFullscreenListeners();
-        
+
+
         // 开始定时截取
-        this.updateUserConfig(); // 确保使用最新配置
         this.captureInterval = setInterval(() => {
             this.captureAndCompareWithFallback();
         }, this.userConfig.checkInterval);
+
+        // 更新会话状态
+        this.updateSessionState();
     }
     
     /**
      * 停止提取幻灯片
      */
     stopExtraction() {
-        if (!this.isRunning) return;
-        
+        if (!this.isRunning) {
+            // 即使已经标记为停止，也要确保清理所有定时器
+            this.clearAllTimers();
+            this.syncToggleButtonState();
+            return;
+        }
+
         this.isRunning = false;
-        
+
+        // 彻底清理所有定时器
+        this.clearAllTimers();
+
+        // 移除全屏事件监听
+        this.removeFullscreenListeners();
+
+        // 重置验证状态
+        this.resetVerificationState();
+
+        const stoppedText = window.i18n ? window.i18n.get('slide.stopped') : 'Stopped';
+        this.updateStatus(stoppedText, 'stopped');
+
+        // 同步按钮状态
+        this.syncToggleButtonState();
+
+        // 更新会话状态
+        this.updateSessionState();
+    }
+
+    /**
+     * 彻底清理所有定时器
+     */
+    clearAllTimers() {
         if (this.captureInterval) {
             clearInterval(this.captureInterval);
             this.captureInterval = null;
         }
-        
-        // 移除全屏事件监听
-        this.removeFullscreenListeners();
-        
-        // 重置验证状态
-        this.resetVerificationState();
-        
-        const stoppedText = window.i18n ? window.i18n.get('slide.stopped') : 'Stopped';
-        this.updateStatus(stoppedText, 'stopped');
+
+        // 清理可能存在的其他定时器引用
+        // 这里可以添加其他定时器的清理逻辑
     }
     
+    /**
+     * 同步切换按钮状态与实际运行状态
+     */
+    syncToggleButtonState() {
+        const extractionToggle = this.extractionToggleElement || document.getElementById('enableSlideExtraction');
+
+        if (extractionToggle) {
+            // 防止触发change事件导致递归调用
+            if (this.toggleChangeHandler) {
+                extractionToggle.removeEventListener('change', this.toggleChangeHandler);
+            }
+
+            extractionToggle.checked = this.isRunning;
+
+            // 重新添加事件监听器
+            if (this.toggleChangeHandler) {
+                extractionToggle.addEventListener('change', this.toggleChangeHandler);
+            }
+        }
+    }
+
+    /**
+     * 强制停止提取（用于错误处理）
+     */
+    forceStop() {
+        this.isRunning = false;
+
+        // 彻底清理所有定时器
+        this.clearAllTimers();
+
+        this.removeFullscreenListeners();
+        this.resetVerificationState();
+
+        const stoppedText = window.i18n ? window.i18n.get('slide.stopped') : 'Stopped (Error)';
+        this.updateStatus(stoppedText, 'error');
+
+        // 同步按钮状态
+        this.syncToggleButtonState();
+
+        // 更新会话状态
+        this.updateSessionState();
+    }
+
+
     /**
      * 获取视频元素（支持全屏状态）
      */
@@ -710,17 +816,17 @@ class SlideExtractor {
     isVideoAccessible(video) {
         try {
             if (!video) return false;
-            
+
             const criteria = DeviceOptimizer.getVideoDetectionStrategy().validationCriteria;
-            
+
             // 基本检查
             if (video.readyState < criteria.minReadyState) return false;
             if (video.videoWidth < criteria.minWidth) return false;
             if (video.videoHeight < criteria.minHeight) return false;
-            
+
             // 暂停状态检查（根据配置决定是否允许暂停的视频）
             if (criteria.notPaused && video.paused) return false;
-            
+
             return true;
         } catch (error) {
             return false;
@@ -745,7 +851,6 @@ class SlideExtractor {
         this.removeFullscreenListeners();
         
         this.fullscreenChangeHandler = () => {
-            console.log('Fullscreen state changed:', this.isInFullscreen());
             // 全屏状态变化时，可能需要重新获取视频元素引用
             // 这里暂时只记录，具体处理在 captureAndCompareWithFallback 中进行
         };
@@ -813,11 +918,8 @@ class SlideExtractor {
                 return;
             }
             
-            // 检查全屏状态并记录
+            // 检查全屏状态
             const isFullscreen = this.isInFullscreen();
-            if (isFullscreen) {
-                console.log('Operating in fullscreen mode, using optimized capture strategy');
-            }
             
             // 调用原有的截取比较逻辑
             await this.captureAndCompare(video);
@@ -844,24 +946,16 @@ class SlideExtractor {
     handleCaptureError(error) {
         const isFullscreen = this.isInFullscreen();
         const isIOSSafari = this.isIOSSafari();
-        
+
         if (error.name === 'SecurityError' && isFullscreen) {
-            if (isIOSSafari) {
-                console.log('iOS Safari全屏安全错误 - 继续尝试，这是预期行为');
-                return true; // 继续运行
-            } else {
-                console.log('桌面浏览器全屏安全错误 - 等待下次尝试');
-                return true; // 继续运行
-            }
-        }
-        
-        if (error.name === 'InvalidStateError' && isFullscreen) {
-            console.log('全屏状态无效错误 - 继续尝试');
             return true; // 继续运行
         }
-        
+
+        if (error.name === 'InvalidStateError' && isFullscreen) {
+            return true; // 继续运行
+        }
+
         // 其他错误类型
-        console.warn('未知错误类型:', error);
         return false; // 需要重置状态
     }
     
@@ -874,7 +968,7 @@ class SlideExtractor {
             if (video.readyState < 2) {
                 return;
             }
-            
+
             // 截取当前帧
             const imageData = this.captureFrame(video);
             if (!imageData) {
@@ -885,21 +979,21 @@ class SlideExtractor {
                 }
                 return;
             }
-            
+
             // 第一次截取，直接保存
             if (!this.lastImageData) {
                 this.saveSlide(imageData, 'Slide 1');
                 this.lastImageData = imageData;
                 return;
             }
-            
+
             // 处理二次验证逻辑
             if (this.userConfig.enableDoubleVerification && this.verificationState !== 'none') {
                 await this.handleVerification(imageData);
             } else {
                 await this.handleNewImage(imageData);
             }
-            
+
         } catch (error) {
             // 静默处理错误，但在验证状态时重置
             if (this.verificationState === 'verifying') {
@@ -983,26 +1077,25 @@ class SlideExtractor {
      * 从视频元素截取当前帧
      */
     captureFrame(video) {
-        if (!video || video.readyState < 2) {
+        if (!video || video.readyState < 1) {
             return null;
         }
-        
+
         if (video.videoWidth === 0 || video.videoHeight === 0) {
             return null;
         }
-        
+
         // 检查是否应该在全屏时尝试截图
         const shouldAttempt = DeviceOptimizer.shouldAttemptFullscreenCapture();
         const isFullscreen = this.isInFullscreen();
-        
+
         if (isFullscreen && !shouldAttempt) {
-            console.log('Skipping capture in fullscreen mode per device configuration');
             return null;
         }
-        
+
         // 根据设备获取截图策略
         const strategy = DeviceOptimizer.getFullscreenCaptureStrategy();
-        
+
         if (isFullscreen) {
             return this.captureFrameWithStrategy(video, strategy);
         } else {
@@ -1017,17 +1110,17 @@ class SlideExtractor {
         try {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            
+
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            
+
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            
+
             if (!this.validateImageData(imageData)) {
                 return null;
             }
-            
+
             return imageData;
         } catch (error) {
             console.warn('Standard capture failed:', error);
@@ -1039,14 +1132,10 @@ class SlideExtractor {
      * 使用策略进行截图（全屏模式）
      */
     captureFrameWithStrategy(video, strategy) {
-        console.log(`Using capture strategy: ${strategy.strategy} - ${strategy.description}`);
-        
         let lastError = null;
-        
+
         // 根据策略尝试不同的截图方法
         for (let attempt = 0; attempt < strategy.retryAttempts; attempt++) {
-            console.log(`Capture attempt ${attempt + 1}/${strategy.retryAttempts}`);
-            
             try {
                 // 尝试不同的画布尺寸
                 if (strategy.useFallbackSizes && strategy.fallbackSizes.length > 0) {
@@ -1058,28 +1147,12 @@ class SlideExtractor {
                     const result = this.captureFrameStandard(video);
                     if (result) return result;
                 }
-                
+
             } catch (error) {
                 lastError = error;
-                console.warn(`Capture attempt ${attempt + 1} failed:`, error);
-                
-                // 在重试之间添加延迟
-                if (attempt < strategy.retryAttempts - 1) {
-                    // 这里不能使用 sleep，因为这是同步函数
-                    // 但我们可以记录错误并继续尝试
-                }
             }
         }
-        
-        // 所有尝试都失败了，但仍然返回 null 而不是抛出错误
-        // 这样可以让提取逻辑继续运行
-        console.warn(`All ${strategy.retryAttempts} capture attempts failed. Last error:`, lastError);
-        
-        // 在iOS Safari上，即使失败也要继续尝试
-        if (this.isIOSSafari() && strategy.enableContinuousAttempt) {
-            console.log('iOS Safari: 继续尝试，不中断提取流程');
-        }
-        
+
         return null;
     }
     
@@ -1110,20 +1183,16 @@ class SlideExtractor {
             canvas.width = Math.min(drawWidth, targetSize.width);
             canvas.height = Math.min(drawHeight, targetSize.height);
             
-            console.log(`Attempting capture with canvas size: ${canvas.width}x${canvas.height}`);
-            
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            
+
             if (!this.validateImageData(imageData)) {
                 return null;
             }
-            
-            console.log(`✓ Successful capture with size: ${canvas.width}x${canvas.height}`);
+
             return imageData;
             
         } catch (error) {
-            console.warn(`Capture with size ${targetSize.width}x${targetSize.height} failed:`, error);
             return null;
         }
     }
@@ -1135,46 +1204,61 @@ class SlideExtractor {
         if (!imageData || !imageData.data || imageData.data.length === 0) {
             return false;
         }
-        
+
         if (imageData.width === 0 || imageData.height === 0) {
             return false;
         }
-        
+
         const isFullscreen = this.isInFullscreen();
         const isIOSSafari = this.isIOSSafari();
-        
-        // 检查是否为完全黑色图像
+
+        // 检查是否为完全黑色图像 - 修复采样逻辑，从中心区域采样避开黑边
         let nonZeroPixels = 0;
         let totalPixelValue = 0;
-        const sampleSize = Math.min(100, imageData.data.length / 4); // 采样检查
-        
-        for (let i = 0; i < sampleSize * 4; i += 4) {
-            const r = imageData.data[i];
-            const g = imageData.data[i + 1];
-            const b = imageData.data[i + 2];
-            
-            totalPixelValue += r + g + b;
-            
-            if (r > 0 || g > 0 || b > 0) {
-                nonZeroPixels++;
-                if (nonZeroPixels > 5) break; // 提前退出，有足够的非零像素
+
+        // 从图像中心区域采样，避开可能的黑边
+        const centerX = Math.floor(imageData.width / 2);
+        const centerY = Math.floor(imageData.height / 2);
+        const sampleRadius = Math.min(50, Math.floor(Math.min(imageData.width, imageData.height) / 4));
+
+        let sampleCount = 0;
+        const maxSamples = 100;
+
+        // 采样中心区域的像素
+        for (let dy = -sampleRadius; dy <= sampleRadius && sampleCount < maxSamples; dy += 10) {
+            for (let dx = -sampleRadius; dx <= sampleRadius && sampleCount < maxSamples; dx += 10) {
+                const x = centerX + dx;
+                const y = centerY + dy;
+
+                if (x >= 0 && x < imageData.width && y >= 0 && y < imageData.height) {
+                    const index = (y * imageData.width + x) * 4;
+                    const r = imageData.data[index];
+                    const g = imageData.data[index + 1];
+                    const b = imageData.data[index + 2];
+
+                    totalPixelValue += r + g + b;
+                    sampleCount++;
+
+                    if (r > 0 || g > 0 || b > 0) {
+                        nonZeroPixels++;
+                        if (nonZeroPixels > 5) break; // 提前退出，有足够的非零像素
+                    }
+                }
             }
         }
-        
+
         // 全屏模式下的宽松验证
         if (isFullscreen) {
             if (isIOSSafari) {
                 // iOS Safari 全屏模式：最宽松的验证
                 // 即使是黑屏也可能包含有用信息
-                console.log(`iOS Safari全屏验证: 非零像素=${nonZeroPixels}, 总像素值=${totalPixelValue}`);
                 return totalPixelValue > 0 || nonZeroPixels > 0;
             } else {
                 // 其他浏览器全屏模式：稍微宽松的验证
-                console.log(`全屏模式验证: 非零像素=${nonZeroPixels}, 总像素值=${totalPixelValue}`);
-                return nonZeroPixels > 0 || totalPixelValue > (sampleSize * 10); // 允许更低的阈值
+                return nonZeroPixels > 0 || totalPixelValue > (sampleCount * 10); // 允许更低的阈值
             }
         }
-        
+
         // 标准模式验证
         return nonZeroPixels > 0;
     }
@@ -1215,32 +1299,36 @@ class SlideExtractor {
     }
     
     /**
-     * 计算感知哈希 (简化的 DCT 方法)
+     * 计算感知哈希 (标准 pHash 方法)
      */
     calculatePerceptualHash(imageData) {
         if (!imageData) {
             console.warn('calculatePerceptualHash: imageData is null');
             return 0;
         }
-        
-        // 缩放到 8x8
-        const resized = this.resizeImageData(imageData, 8, 8);
-        
-        // 转换为灰度
-        const grayscale = this.convertToGrayscale(resized);
-        
-        // 简化的 DCT 变换
-        const dctCoeffs = this.applySimplifiedDCT(grayscale.data, 8);
-        
-        // 计算平均值 (排除 DC 分量)
-        const avg = dctCoeffs.slice(1).reduce((sum, val) => sum + val, 0) / (dctCoeffs.length - 1);
-        
-        // 生成哈希
+
+        // 1. 先转换为灰度
+        const grayscale = this.convertToGrayscale(imageData);
+
+        // 2. 然后缩放到 32x32
+        const resized = this.resizeImageData(grayscale, 32, 32);
+
+        // 3. 对 32x32 的灰度图像素应用 DCT 变换
+        const dctCoeffs = this.applyDCT32x32(resized.data);
+
+        // 4. 从 32x32 DCT 结果中提取左上角 8x8 低频区域
+        const lowFreqCoeffs = this.extractLowFrequencyCoeffs(dctCoeffs);
+
+        // 5. 排除直流(DC)分量，计算剩余63个系数的中位数
+        const acCoeffs = lowFreqCoeffs.slice(1); // 排除DC分量
+        const median = this.calculateMedian(acCoeffs);
+
+        // 6. 生成63位哈希
         let hash = 0;
-        for (let i = 1; i < Math.min(dctCoeffs.length, 33); i++) { // 使用前32个 AC 分量
-            hash = hash * 2 + (dctCoeffs[i] > avg ? 1 : 0);
+        for (let i = 0; i < acCoeffs.length; i++) {
+            hash = hash * 2 + (acCoeffs[i] >= median ? 1 : 0);
         }
-        
+
         return hash;
     }
     
@@ -1285,30 +1373,64 @@ class SlideExtractor {
     }
     
     /**
-     * 简化的 DCT 变换
+     * 32x32 DCT 变换
      */
-    applySimplifiedDCT(pixels, size) {
+    applyDCT32x32(pixels) {
+        const size = 32;
         const coeffs = [];
-        
+
         for (let u = 0; u < size; u++) {
             for (let v = 0; v < size; v++) {
                 let sum = 0;
                 for (let x = 0; x < size; x++) {
                     for (let y = 0; y < size; y++) {
                         const pixel = pixels[(y * size + x) * 4]; // 取 R 分量 (灰度图都相同)
-                        sum += pixel * 
+                        sum += pixel *
                                Math.cos((2 * x + 1) * u * Math.PI / (2 * size)) *
                                Math.cos((2 * y + 1) * v * Math.PI / (2 * size));
                     }
                 }
-                
+
                 const c_u = u === 0 ? 1 / Math.sqrt(2) : 1;
                 const c_v = v === 0 ? 1 / Math.sqrt(2) : 1;
-                coeffs.push(0.25 * c_u * c_v * sum);
+                coeffs.push((1 / (size / 2)) * c_u * c_v * sum);
             }
         }
-        
+
         return coeffs;
+    }
+
+    /**
+     * 从 32x32 DCT 结果中提取左上角 8x8 低频区域
+     */
+    extractLowFrequencyCoeffs(dctCoeffs) {
+        const lowFreqCoeffs = [];
+
+        // 从32x32的DCT系数矩阵中提取左上角8x8区域
+        for (let u = 0; u < 8; u++) {
+            for (let v = 0; v < 8; v++) {
+                const index = u * 32 + v; // 32x32矩阵中的索引
+                lowFreqCoeffs.push(dctCoeffs[index]);
+            }
+        }
+
+        return lowFreqCoeffs;
+    }
+
+    /**
+     * 计算中位数
+     */
+    calculateMedian(values) {
+        if (values.length === 0) return 0;
+
+        const sorted = [...values].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+
+        if (sorted.length % 2 === 0) {
+            return (sorted[mid - 1] + sorted[mid]) / 2;
+        } else {
+            return sorted[mid];
+        }
     }
     
     /**
@@ -1796,7 +1918,7 @@ class SlideExtractor {
                 // 清理URL
                 URL.revokeObjectURL(url);
                 
-                console.log('Slide downloaded successfully');
+                // 下载成功
             } else {
                 console.error('Failed to load slide blob');
                 alert('Download failed: Unable to get original image data');
@@ -1837,18 +1959,13 @@ class SlideExtractor {
         }
 
         try {
-            console.log('Safari Debug: Starting download for streamId:', this.currentStreamId);
-            
             // 检查数据库连接状态
             if (!this.storageManager.db) {
-                console.error('Safari Debug: Database not initialized');
                 throw new Error('Database not initialized');
             }
-            
-            // 🔑 关键修复：使用与slides.html相同的数据获取方式
-            // 先获取幻灯片列表（只包含缩略图数据）
+
+            // 获取幻灯片列表
             const slideList = await this.storageManager.getSlidesForStream(this.currentStreamId);
-            console.log('Safari Debug: Retrieved slide list:', slideList.length);
             
             if (slideList.length === 0) {
                 const noSlidesText = window.i18n ? window.i18n.get('slide.error_no_slides') : 'No slides available for download';
@@ -1859,45 +1976,35 @@ class SlideExtractor {
             const packingText = window.i18n ? window.i18n.get('slide.packing') : 'Packing slides...';
             this.updateStatus(packingText, 'text-info');
             
-            const zip = new JSZip();
+            const zip = new window.JSZip();
             
-            // 🔑 关键修复：逐个获取blob数据，与slides.html保持一致
+            // 逐个获取blob数据
             for (let i = 0; i < slideList.length; i++) {
                 const slide = slideList[i];
-                console.log(`Safari Debug: Processing slide ${i+1}/${slideList.length}: ${slide.slideId}`);
-                
+
                 try {
-                    // 逐个获取blob数据（短事务，Safari友好）
                     const blob = await this.storageManager.getSlideBlob(slide.slideId);
-                    
+
                     if (blob && blob instanceof Blob && blob.size > 0) {
                         // 为每张幻灯片生成独立的时间戳
                         const slideTime = new Date(slide.capturedAt || Date.now());
                         const cstTime = new Date(slideTime.getTime() + (8 * 60 * 60 * 1000)); // 转换为CST (UTC+8)
                         const timestamp = cstTime.toISOString().slice(0, 19).replace(/:/g, '-');
                         const fileName = `slide_${timestamp}_CST.png`;
-                        
+
                         // 添加到zip
                         zip.file(fileName, blob);
-                        
-                        console.log(`Safari Debug: Added slide ${i+1} to zip: ${fileName}, size: ${blob.size} bytes`);
-                    } else {
-                        console.warn(`Safari Debug: Slide ${i+1} has invalid blob:`, blob);
                     }
                 } catch (slideError) {
-                    console.error(`Safari Debug: Failed to get blob for slide ${i+1}:`, slideError);
+                    console.error(`Failed to get blob for slide ${i+1}:`, slideError);
                     // 继续处理其他幻灯片
                 }
             }
             
-            console.log('Safari Debug: Starting ZIP generation...');
-            
-            // 生成 ZIP 文件，使用与slides.html相同的设置
+            // 生成 ZIP 文件
             const zipBlob = await zip.generateAsync({ type: 'blob' });
-            
-            console.log('Safari Debug: ZIP generated, size:', zipBlob.size, 'bytes');
-            
-            // 使用与slides.html相同的下载方式
+
+            // 下载 ZIP 文件
             const url = URL.createObjectURL(zipBlob);
             const link = document.createElement('a');
             const now = new Date();
@@ -1907,8 +2014,6 @@ class SlideExtractor {
             link.href = url;
             link.click();
             URL.revokeObjectURL(url);
-            
-            console.log('Safari Debug: Download completed using slides.html method');
             
             const downloadCompleteText = window.i18n ? window.i18n.get('slide.download_complete') : 'Download complete!';
             this.updateStatus(downloadCompleteText, 'text-success');
@@ -1962,3 +2067,4 @@ class SlideExtractor {
 
 // 确保类在全局作用域中可用
 window.SlideExtractor = SlideExtractor;
+
