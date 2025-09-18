@@ -6,6 +6,12 @@ RUC Student Portal 提供比延河课堂官方网站更简单直接的直播课�
 
 > RUC Student Portal is a third-party tool developed independently by its contributors. It is NOT an official website of, and is NOT affiliated with, associated with, endorsed by, or in any way connected to Renmin University of China (RUC) or Beijing Institute of Technology (BIT), or any of their subsidiaries or affiliates. All product and company names are trademarks™ or registered® trademarks of their respective holders.
 
+访问 [RUC IT Centre](https://it.ruc.edu.kg/software) 下载桌面版软件：
+
+- [AutoSlides](https://github.com/bit-admin/Yanhekt-AutoSlides) 是一个自动从直播或录播课堂中捕获幻灯片的工具，支持监控内容变化并保存新幻灯片的截图。
+- [Yanhekt Downloader](https://github.com/bit-admin/Yanhekt-downloader-electron) 是基于 Electron 的延河课堂视频下载器，可以将课程下载到本地。
+- [AutoSlides Extractor](https://github.com/bit-admin/AutoSlides-extractor) 工具可以自动从下载好的视频中提取幻灯片，并将其保存为图片。
+
 ## 使用指南
 
 ### 从延河课堂获取密钥
