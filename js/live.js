@@ -5,7 +5,7 @@
 class LiveApp {
     constructor() {
         this.currentStream = null;
-        this.currentStreamType = 'camera'; // 'camera' or 'screen'
+        this.currentStreamType = 'screen'; // 'camera' or 'screen'
         this.videoPlayer = null;
         this.slideExtractor = null;
         
@@ -80,7 +80,7 @@ class LiveApp {
             return dateStr; // 如果解析失败，返回原始字符串
         }
     }
-    
+     
     /**
      * 初始化应用程序
      */
@@ -254,8 +254,17 @@ class LiveApp {
         document.getElementById('cameraUrl').value = cameraUrl;
         document.getElementById('screenUrl').value = screenUrl;
         
-        // 默认加载摄像头流
-        this.loadStream('camera');
+        // 默认加载屏幕流
+        this.loadStream('screen');
+
+        // 更新UI状态以反映默认的屏幕流
+        this.updateStreamButtons();
+
+        // 显示幻灯片提取功能区域
+        const slideSection = document.getElementById('slideExtractionSection');
+        if (slideSection) {
+            slideSection.style.display = 'block';
+        }
     }
     
     /**
@@ -379,7 +388,15 @@ class LiveApp {
         this.videoPlayer.preload = 'metadata';
         
         // 检查是否支持HLS
-        if (this.videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const streamId = urlParams.get('streamId');
+        const isDebugMode = streamId && streamId.startsWith('debug_');
+
+        if (isDebugMode && window.Hls && window.Hls.isSupported()) {
+            // Debug模式下始终使用HLS.js
+            this.hasNativeHLS = false;
+            console.log('Debug mode detected, using HLS.js');
+        } else if (this.videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
             // 原生支持HLS (Safari)
             this.hasNativeHLS = true;
         } else if (window.Hls && window.Hls.isSupported()) {
@@ -689,8 +706,12 @@ class LiveApp {
                 resolve(true);
             };
             
-            modal.querySelector('.discard-btn').onclick = () => {
+            modal.querySelector('.discard-btn').onclick = async () => {
                 document.body.removeChild(modal);
+                // 清空储存的幻灯片，和 clearSlidesBtn 一样的逻辑
+                if (this.slideExtractor) {
+                    await this.slideExtractor.clearSlides();
+                }
                 resolve(false);
             };
             
@@ -781,9 +802,12 @@ class LiveApp {
             // 委托给 SlideExtractor 处理
             await this.slideExtractor.restoreSlidesPreview();
             
+            // 只需要显示成功消息
             const slideCount = await this.slideExtractor.getSlideCountForCurrentStream();
-            const successMessage = this.getI18nText('session.restore_success').replace('{{count}}', slideCount) || `Restored ${slideCount} slides`;
-            this.showNotification(successMessage);
+            if (slideCount > 0) {
+                const successMessage = this.getI18nText('session.restore_success').replace('{{count}}', slideCount) || `Restored ${slideCount} slides`;
+                this.showNotification(successMessage);
+            }
         } catch (error) {
             console.error('Failed to restore slides:', error);
             const errorMessage = this.getI18nText('session.restore_failed') || 'Failed to restore slides';

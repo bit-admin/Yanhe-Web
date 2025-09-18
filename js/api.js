@@ -133,7 +133,7 @@ const API = {
         if (!token) {
             throw new Error('请先设置 Token');
         }
-        
+
         try {
             const response = await fetch(`${this.BASE_URL}/live/personal`, {
                 method: 'POST',
@@ -142,15 +142,58 @@ const API = {
                 },
                 body: JSON.stringify({ token, page, page_size: pageSize })
             });
-            
+
             const data = await response.json();
             if (!data.success) {
                 throw new Error(data.error || 'Failed to retrieve live stream list');
             }
-            
+
             return data.data;
         } catch (error) {
             console.error('Failed to retrieve personal live stream list:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * 通过关键词搜索直播列表
+     * @param {string} keyword - 搜索关键词
+     * @param {number} page - 页码，默认为1
+     * @param {number} pageSize - 每页大小，默认为16
+     * @returns {Promise<Object>} 直播列表数据
+     */
+    async searchLiveList(keyword, page = 1, pageSize = 16) {
+        const token = TokenManager.getToken();
+        if (!token) {
+            throw new Error('请先设置 Token');
+        }
+
+        if (!keyword || keyword.trim() === '') {
+            throw new Error('请输入搜索关键词');
+        }
+
+        try {
+            const response = await fetch(`${this.BASE_URL}/live/search`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    token,
+                    keyword: keyword.trim(),
+                    page,
+                    page_size: pageSize
+                })
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to search live streams');
+            }
+
+            return data.data;
+        } catch (error) {
+            console.error('Failed to search live streams:', error);
             throw error;
         }
     }

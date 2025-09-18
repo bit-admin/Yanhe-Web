@@ -8,7 +8,12 @@ class App {
         this.totalPages = 1;
         this.currentStreamType = null;
         this.streams = [];
-        
+        this.currentSearchKeyword = null;
+        this.isSearchMode = false;
+
+        // Debug mode instance (lazy loaded)
+        this.debugMode = null;
+
         this.init();
     }
     
@@ -40,10 +45,41 @@ class App {
         // 直播流按钮事件
         document.getElementById('getPersonalStreamsBtn').addEventListener('click', () => this.loadStreams('personal'));
         document.getElementById('getPublicStreamsBtn').addEventListener('click', () => this.loadStreams('public'));
-        
+
+        // 搜索事件
+        document.getElementById('searchBtn').addEventListener('click', () => this.performSearch());
+        document.getElementById('keywordSearchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.performSearch();
+            }
+        });
+
+        // 搜索输入框失去焦点时也触发搜索（如果有内容）
+        document.getElementById('keywordSearchInput').addEventListener('blur', (e) => {
+            const keyword = e.target.value.trim();
+            if (keyword && keyword !== this.currentSearchKeyword) {
+                this.performSearch();
+            } else if (!keyword && this.isSearchMode) {
+                // 如果输入框为空且当前处于搜索模式，清除搜索状态
+                this.clearSearch();
+            }
+        });
+
+        // 监听输入变化，实现实时搜索清除
+        document.getElementById('keywordSearchInput').addEventListener('input', (e) => {
+            const keyword = e.target.value.trim();
+            if (!keyword && this.isSearchMode) {
+                // 如果输入框被清空且当前处于搜索模式，清除搜索状态
+                this.clearSearch();
+            }
+        });
+
         // 分页事件
         document.getElementById('prevPageBtn').addEventListener('click', () => this.previousPage());
         document.getElementById('nextPageBtn').addEventListener('click', () => this.nextPage());
+
+        // 筛选事件
+        document.getElementById('enableFilterCheckbox').addEventListener('change', () => this.toggleFilterControls());
         
         // 说明书事件
         document.getElementById('toggleInstructions').addEventListener('click', () => this.toggleInstructions());
@@ -76,6 +112,14 @@ class App {
         document.getElementById('termsModal').addEventListener('click', (e) => {
             if (e.target === document.getElementById('termsModal')) {
                 this.hideTermsModal();
+            }
+        });
+
+        // Debug mode keyboard shortcut (Ctrl+Shift+D)
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                e.preventDefault();
+                this.toggleDebugMode();
             }
         });
     }
@@ -223,32 +267,44 @@ class App {
             this.showTokenStatus('error', window.i18n.get('error.token_required'));
             return;
         }
-        
+
+        // 退出搜索模式
+        this.isSearchMode = false;
+        this.currentSearchKeyword = null;
+
         this.currentStreamType = type;
         this.currentPage = page;
-        
+
         this.showLoading(true);
         this.clearStreams();
-        
+
         try {
-            let response;
-            if (type === 'personal') {
-                response = await API.getPersonalLiveList(page);
+            const isFilterEnabled = document.getElementById('enableFilterCheckbox').checked;
+
+            if (isFilterEnabled) {
+                // 筛选模式：加载多页数据并筛选
+                await this.loadFilteredStreams(type);
             } else {
-                response = await API.getPublicLiveList(page);
+                // 正常模式：按原来的分页逻辑加载
+                let response;
+                if (type === 'personal') {
+                    response = await API.getPersonalLiveList(page);
+                } else {
+                    response = await API.getPublicLiveList(page);
+                }
+
+                this.streams = response.data || [];
+                this.totalPages = response.last_page || 1;
+                this.currentPage = response.current_page || 1;
             }
-            
-            this.streams = response.data || [];
-            this.totalPages = response.last_page || 1;
-            this.currentPage = response.current_page || 1;
-            
+
             this.renderStreams();
             this.updatePagination();
-            
+
             if (this.streams.length === 0) {
                 this.showNoStreamsMessage();
             }
-            
+
         } catch (error) {
             console.error('Failed to load streams:', error);
             this.showError(error.message || window.i18n.get('error.general'));
@@ -256,7 +312,116 @@ class App {
             this.showLoading(false);
         }
     }
-    
+
+    /**
+     * 加载筛选后的直播流
+     */
+    async loadFilteredStreams(type) {
+        const titleFilter = document.getElementById('titleFilterInput').value.trim().toLowerCase();
+        const searchRange = parseInt(document.getElementById('searchRangeSelect').value) || 16;
+        const pageSize = 16;
+        const totalPages = Math.ceil(searchRange / pageSize);
+
+        if (!titleFilter) {
+            this.showTokenStatus('error', window.i18n.get('filter.error.empty_title'));
+            return;
+        }
+
+        let allStreams = [];
+
+        // 加载指定范围内的所有数据
+        for (let page = 1; page <= totalPages; page++) {
+            try {
+                let response;
+                if (type === 'personal') {
+                    response = await API.getPersonalLiveList(page, pageSize);
+                } else {
+                    response = await API.getPublicLiveList(page, pageSize);
+                }
+
+                const streams = response.data || [];
+                allStreams.push(...streams);
+
+                // 如果已经达到指定数量或者是最后一页，停止加载
+                if (allStreams.length >= searchRange || page >= (response.last_page || 1)) {
+                    break;
+                }
+            } catch (error) {
+                console.error(`Failed to load page ${page}:`, error);
+                break;
+            }
+        }
+
+        // 限制到指定数量
+        allStreams = allStreams.slice(0, searchRange);
+
+        // 根据标题筛选
+        this.streams = allStreams.filter(stream => {
+            const title = (stream.title || '').toLowerCase();
+            return title.includes(titleFilter);
+        });
+
+        // 筛选模式下不使用分页
+        this.totalPages = 1;
+        this.currentPage = 1;
+    }
+
+    /**
+     * 执行搜索
+     */
+    async performSearch(page = 1) {
+        const keyword = document.getElementById('keywordSearchInput').value.trim();
+
+        if (!keyword) {
+            this.showTokenStatus('error', window.i18n.get('search.error.empty_keyword') || '请输入搜索关键词');
+            return;
+        }
+
+        if (!TokenManager.hasToken()) {
+            this.showTokenStatus('error', window.i18n.get('error.token_required'));
+            return;
+        }
+
+        this.isSearchMode = true;
+        this.currentSearchKeyword = keyword;
+        this.currentPage = page;
+
+        this.showLoading(true);
+        this.clearStreams();
+
+        try {
+            const response = await API.searchLiveList(keyword, page);
+
+            this.streams = response.data || [];
+            this.totalPages = response.last_page || 1;
+            this.currentPage = response.current_page || 1;
+
+            this.renderStreams();
+            this.updatePagination();
+
+            if (this.streams.length === 0) {
+                this.showNoStreamsMessage();
+            }
+
+        } catch (error) {
+            console.error('Failed to search streams:', error);
+            this.showError(error.message || window.i18n.get('error.general'));
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+
+    /**
+     * 清除搜索
+     */
+    clearSearch() {
+        document.getElementById('keywordSearchInput').value = '';
+        this.isSearchMode = false;
+        this.currentSearchKeyword = null;
+        this.clearStreams();
+    }
+
     /**
      * 渲染直播流列表
      */
@@ -303,8 +468,13 @@ class App {
         // 格式化观看人数
         const participantCount = window.i18n.formatNumber(stream.participant_count || 0);
         
+        // 为调试流添加特殊标识
+        const debugBadge = stream.isDebug ?
+            `<div class="debug-badge">🔧 DEBUG</div>` : '';
+
         card.innerHTML = `
             <div class="stream-status ${status.class}">${status.text}</div>
+            ${debugBadge}
             <div class="stream-title">${this.escapeHtml(stream.title || 'Untitled')}</div>
             <div class="stream-professor"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 7.5V9M15 11.5C16.11 11.5 17 12.39 17 13.5V16H15.5V22H9.5V16H8V13.5C8 12.39 8.89 11.5 10 11.5H15ZM5 6.5C5.8 6.5 6.5 7.2 6.5 8S5.8 9.5 5 9.5 3.5 8.8 3.5 8 4.2 6.5 5 6.5ZM7.5 11H9V10C9 9.45 8.55 9 8 9H6C5.45 9 5 9.45 5 10V12H6.5V22H10.5V18H7.5V11Z" stroke="currentColor" stroke-width="1" fill="currentColor"/></svg> ${this.escapeHtml(stream.session?.professor?.name || 'Unknown')}</div>
             <div class="stream-location"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22S19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5Z" stroke="currentColor" stroke-width="1" fill="currentColor"/></svg> ${this.escapeHtml(stream.subtitle || 'Unknown location')}</div>
@@ -356,20 +526,28 @@ class App {
      */
     updatePagination() {
         const pagination = document.getElementById('pagination');
+        const isFilterEnabled = document.getElementById('enableFilterCheckbox').checked;
+
+        // Hide pagination when filtering is active since we show all filtered results
+        if (isFilterEnabled) {
+            pagination.style.display = 'none';
+            return;
+        }
+
         const prevBtn = document.getElementById('prevPageBtn');
         const nextBtn = document.getElementById('nextPageBtn');
         const pageInfo = document.getElementById('pageInfo');
-        
+
         if (this.totalPages <= 1) {
             pagination.style.display = 'none';
             return;
         }
-        
+
         pagination.style.display = 'flex';
-        
+
         prevBtn.disabled = this.currentPage <= 1;
         nextBtn.disabled = this.currentPage >= this.totalPages;
-        
+
         pageInfo.textContent = window.i18n.get('pagination.page', {
             current: this.currentPage,
             total: this.totalPages
@@ -381,16 +559,24 @@ class App {
      */
     previousPage() {
         if (this.currentPage > 1) {
-            this.loadStreams(this.currentStreamType, this.currentPage - 1);
+            if (this.isSearchMode) {
+                this.performSearch(this.currentPage - 1);
+            } else {
+                this.loadStreams(this.currentStreamType, this.currentPage - 1);
+            }
         }
     }
-    
+
     /**
      * 下一页
      */
     nextPage() {
         if (this.currentPage < this.totalPages) {
-            this.loadStreams(this.currentStreamType, this.currentPage + 1);
+            if (this.isSearchMode) {
+                this.performSearch(this.currentPage + 1);
+            } else {
+                this.loadStreams(this.currentStreamType, this.currentPage + 1);
+            }
         }
     }
     
@@ -410,12 +596,47 @@ class App {
         document.getElementById('pagination').style.display = 'none';
         document.getElementById('noStreamsMessage').style.display = 'none';
     }
+
+    /**
+     * 切换筛选控件的启用状态
+     */
+    toggleFilterControls() {
+        const isEnabled = document.getElementById('enableFilterCheckbox').checked;
+        const titleInput = document.getElementById('titleFilterInput');
+        const rangeSelect = document.getElementById('searchRangeSelect');
+
+        titleInput.disabled = !isEnabled;
+        rangeSelect.disabled = !isEnabled;
+
+        // 如果禁用筛选，清空输入框
+        if (!isEnabled) {
+            titleInput.value = '';
+        }
+    }
     
     /**
      * 显示无直播流消息
      */
     showNoStreamsMessage() {
-        document.getElementById('noStreamsMessage').style.display = 'block';
+        const noStreamsMessage = document.getElementById('noStreamsMessage');
+        const titleElement = noStreamsMessage.querySelector('h3');
+        const descElement = noStreamsMessage.querySelector('p');
+        const isFilterEnabled = document.getElementById('enableFilterCheckbox').checked;
+
+        if (this.isSearchMode) {
+            titleElement.textContent = window.i18n.get('search.no_results.title') || 'No search results found';
+            descElement.textContent = window.i18n.get('search.no_results.desc') || `No courses found for "${this.currentSearchKeyword}". Try different keywords.`;
+        } else if (isFilterEnabled) {
+            titleElement.textContent = window.i18n.get('filter.no_results.title');
+            descElement.textContent = window.i18n.get('filter.no_results.desc');
+        } else {
+            titleElement.setAttribute('data-i18n', 'streams.no_streams.title');
+            descElement.setAttribute('data-i18n', 'streams.no_streams.desc');
+            titleElement.textContent = window.i18n ? window.i18n.get('streams.no_streams.title') : 'No streams found';
+            descElement.textContent = window.i18n ? window.i18n.get('streams.no_streams.desc') : 'Please check your token and try again.';
+        }
+
+        noStreamsMessage.style.display = 'block';
     }
     
     /**
@@ -666,6 +887,53 @@ class App {
         } else {
             document.getElementById('submitLoginBtn').textContent = window.i18n ? window.i18n.get('login.submit') : 'Login';
         }
+    }
+
+    /**
+     * 切换调试模式
+     */
+    async toggleDebugMode() {
+        // 如果调试模式未加载，先加载
+        if (!this.debugMode) {
+            await this.loadDebugMode();
+        }
+
+        // 切换调试模式
+        if (this.debugMode) {
+            this.debugMode.toggle();
+        }
+    }
+
+    /**
+     * 动态加载调试模式
+     */
+    async loadDebugMode() {
+        try {
+            // 动态加载调试模式脚本
+            if (!window.DebugMode) {
+                await this.loadScript('js/debug-mode.js');
+            }
+
+            // 创建调试模式实例
+            if (window.DebugMode && !this.debugMode) {
+                this.debugMode = new window.DebugMode(this);
+            }
+        } catch (error) {
+            console.error('Failed to load debug mode:', error);
+        }
+    }
+
+    /**
+     * 动态加载脚本
+     */
+    loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
     }
 }
 

@@ -751,39 +751,84 @@ class SlideStorageManager {
     }
     
     /**
-     * 清空所有数据
+     * 清空所有数据（包括IndexedDB和localStorage中的课程数据）
      */
     async clearAllData() {
         return new Promise((resolve, reject) => {
             const tx = this.db.transaction(['streams', 'slides', 'thumbnails', 'sessions'], 'readwrite');
-            
+
             let completedOperations = 0;
             const totalOperations = 4;
-            
+
             const checkComplete = () => {
                 completedOperations++;
                 if (completedOperations === totalOperations) {
+                    // IndexedDB清理完成后，清理localStorage中的课程缓存数据
+                    this.clearLocalStorageCourseData();
                     resolve();
                 }
             };
-            
+
             // 清空所有表
             const clearStreams = tx.objectStore('streams').clear();
             clearStreams.onsuccess = checkComplete;
             clearStreams.onerror = () => reject(clearStreams.error);
-            
+
             const clearSlides = tx.objectStore('slides').clear();
             clearSlides.onsuccess = checkComplete;
             clearSlides.onerror = () => reject(clearSlides.error);
-            
+
             const clearThumbnails = tx.objectStore('thumbnails').clear();
             clearThumbnails.onsuccess = checkComplete;
             clearThumbnails.onerror = () => reject(clearThumbnails.error);
-            
+
             const clearSessions = tx.objectStore('sessions').clear();
             clearSessions.onsuccess = checkComplete;
             clearSessions.onerror = () => reject(clearSessions.error);
         });
+    }
+
+    /**
+     * 清理localStorage中的课程缓存数据，保留用户设置
+     */
+    clearLocalStorageCourseData() {
+        try {
+            // 需要保留的设置项
+            const preservedKeys = ['language', 'hasVisited', 'yanhekt_token', 'auth'];
+            const preservedData = {};
+
+            // 保存需要保留的数据
+            preservedKeys.forEach(key => {
+                const value = localStorage.getItem(key);
+                if (value !== null) {
+                    preservedData[key] = value;
+                }
+            });
+
+            // 清理所有以 'stream_' 开头的课程缓存数据
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('stream_')) {
+                    keysToRemove.push(key);
+                }
+            }
+
+            // 删除课程缓存数据
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                console.log('Removed localStorage course cache:', key);
+            });
+
+            // 恢复需要保留的设置
+            Object.keys(preservedData).forEach(key => {
+                localStorage.setItem(key, preservedData[key]);
+            });
+
+            console.log(`Cleared ${keysToRemove.length} course cache entries from localStorage, preserved ${Object.keys(preservedData).length} settings`);
+        } catch (error) {
+            console.error('Error clearing localStorage course data:', error);
+        }
     }
 
     /**

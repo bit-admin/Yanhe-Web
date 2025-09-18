@@ -10,9 +10,6 @@
 /*.css
   Cache-Control: public, max-age=31536000, immutable
 
-/*.js
-  Cache-Control: public, max-age=31536000, immutable
-
 /*.png
   Cache-Control: public, max-age=31536000, immutable
 
@@ -26,8 +23,11 @@
 /*.html
   Cache-Control: public, max-age=0, must-revalidate
 
-# JSON files (locales) - short cache
+# JSON files (locales) and JS files - short cache
 /*.json
+  Cache-Control: public, max-age=3600
+
+/*.js
   Cache-Control: public, max-age=3600
 
 # Markdown files
